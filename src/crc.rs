@@ -32,6 +32,12 @@ fn update_crc(crc: u32, buf: &[u8]) -> u32 {
     c
 }
 
-pub fn crc(buf: &[u8]) -> u32 {
+pub fn crc(head: crate::ChunkId, buf: &[u8]) -> u32 {
+    let c = update_crc(0xffffffff, &buf.len().to_be_bytes());
+    let c = update_crc(c, &head.0);
+    update_crc(c, buf) ^ 0xffffffff
+}
+
+pub fn crc_raw(buf: &[u8]) -> u32 {
     update_crc(0xffffffff, buf) ^ 0xffffffff
 }
