@@ -68,20 +68,20 @@ fn parse_png_iter(mut iter: core::iter::Enumerate<impl Iterator<Item = u8>>, mut
 
     Ok(())
 }
+const PNG_MAGIC: &[u8] = &[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
 
 fn parse_png_magic(iter: &mut impl Iterator<Item = (usize, u8)>, mut stdinfo: impl Write) -> std::io::Result<()> {
-    const PNG: &[u8] = &[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
     let mut px: usize = 0;
     for (ix, b) in iter {
         // write!(stdinfo, "[{:?} | {:?}]", *b.as_ref().unwrap() as char, (b.as_ref().unwrap() & 0b0111_1111) as char)?;
-        if b == PNG[px] {
+        if b == PNG_MAGIC[px] {
             px += 1;
         } else {
             return Err(MyErr::InvalidData.into());
             // px = 0;
         }
-        if px == PNG.len() {
-            writeln!(stdinfo, "Found PNG magic at index {:?}:", (ix + 1) - PNG.len())?;
+        if px == PNG_MAGIC.len() {
+            writeln!(stdinfo, "Found PNG magic at index {:?}:", (ix + 1) - PNG_MAGIC.len())?;
             break;
         }
     }
@@ -210,6 +210,9 @@ fn parse_png_chunk(iter: &mut impl Iterator<Item = (usize, u8)>, mut stdinfo: im
         crc |= ok_or as u32;
     }
     let chunk = Chunk { id: chunk, data: bytes, crc };
+    if !chunk.is_valid() {
+        return Err(MyErr::InvalidData);
+    }
     Ok(chunk)
 }
 
