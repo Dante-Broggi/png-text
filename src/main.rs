@@ -43,7 +43,7 @@ fn parse_pngs(bytes: io::Bytes<clio::Input>, stdinfo: clio::Output) -> std::io::
 }
 
 fn parse_png_iter(mut iter: core::iter::Enumerate<impl Iterator<Item = u8>>, mut stdinfo: impl Write) -> std::io::Result<()> {
-    parse_png_magic(iter.by_ref(), &mut stdinfo)?;
+    parse_png_magic(iter.by_ref().map(|x| x.1))?;
     let mut found_iend = false;
     while let Ok(x) = parse_png_chunk(&mut iter, &mut stdinfo) {
         writeln!(stdinfo, "parsed chunk: {:?}", x.id)?;
@@ -70,9 +70,9 @@ fn parse_png_iter(mut iter: core::iter::Enumerate<impl Iterator<Item = u8>>, mut
 }
 const PNG_MAGIC: &[u8] = &[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
 
-fn parse_png_magic(iter: &mut impl Iterator<Item = (usize, u8)>, mut stdinfo: impl Write) -> std::io::Result<()> {
+fn parse_png_magic(iter: impl Iterator<Item = u8>) -> std::io::Result<()> {
     let mut px: usize = 0;
-    for (ix, b) in iter {
+    for b in iter {
         // write!(stdinfo, "[{:?} | {:?}]", *b.as_ref().unwrap() as char, (b.as_ref().unwrap() & 0b0111_1111) as char)?;
         if b == PNG_MAGIC[px] {
             px += 1;
@@ -81,7 +81,7 @@ fn parse_png_magic(iter: &mut impl Iterator<Item = (usize, u8)>, mut stdinfo: im
             // px = 0;
         }
         if px == PNG_MAGIC.len() {
-            writeln!(stdinfo, "Found PNG magic at index {:?}:", (ix + 1) - PNG_MAGIC.len())?;
+            // writeln!(stdinfo, "Found PNG magic at index {:?}:", (ix + 1) - PNG_MAGIC.len())?;
             break;
         }
     }
