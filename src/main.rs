@@ -192,8 +192,8 @@ pub struct Chunk {
 impl Chunk {
     /// does the crc match the data?
     pub fn is_valid(&self) -> bool {
-        self.id.is_valid() //&&
-        // crate::crc::crc(self.id, &self.data) == self.crc
+        self.id.is_valid() &&
+        crate::crc::crc(self.id, &self.data) == self.crc
     }
     pub fn full_len(&self) -> usize {
         4 + 4 + self.data.len() + 4
