@@ -77,7 +77,7 @@ fn parse_png_magic(iter: &mut impl Iterator<Item = (usize, u8)>, mut stdinfo: im
         if b == PNG[px] {
             px += 1;
         } else {
-            return Err(io::Error::new(io::ErrorKind::InvalidData, Err::InvalidData));
+            return Err(MyErr::InvalidData.into());
             // px = 0;
         }
         if px == PNG.len() {
@@ -88,19 +88,28 @@ fn parse_png_magic(iter: &mut impl Iterator<Item = (usize, u8)>, mut stdinfo: im
     Ok(())
 }
 #[derive(Debug)]
-enum Err {
+enum MyErr {
     EOF, LargeLen, InvalidData,
 }
-impl Display for Err {
+impl Display for MyErr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Err::EOF => f.write_str("EOF"),
-            Err::LargeLen => f.write_str("Too large chunk len"),
-            Err::InvalidData => f.write_str("invalid PNG chunk"),
+            MyErr::EOF => f.write_str("EOF"),
+            MyErr::LargeLen => f.write_str("Too large chunk len"),
+            MyErr::InvalidData => f.write_str("invalid PNG chunk"),
         }
     }
 }
-impl std::error::Error for Err {
+impl From<MyErr> for std::io::Error {
+    fn from(value: MyErr) -> Self {
+        match value {
+            MyErr::EOF => Self::new(io::ErrorKind::UnexpectedEof, value),
+            MyErr::LargeLen => Self::new(io::ErrorKind::InvalidData, value),
+            MyErr::InvalidData => Self::new(io::ErrorKind::InvalidData, value),
+        }
+    }
+}
+impl std::error::Error for MyErr {
 
 }
 
@@ -148,27 +157,27 @@ impl Display for ChunkId {
     }
 }
 
-fn parse_png_chunk_head(iter: &mut impl Iterator<Item = (usize, u8)>, mut stdinfo: impl Write) -> Result<(u32, ChunkId)> {
-    let (ix, b) = iter.next().ok_or(io::Error::new(io::ErrorKind::UnexpectedEof, Err::EOF))?;
+fn parse_png_chunk_head(iter: &mut impl Iterator<Item = (usize, u8)>, mut stdinfo: impl Write) -> std::result::Result<(u32, ChunkId), MyErr> {
+    let (ix, b) = iter.next().ok_or(MyErr::EOF)?;
     let mut len: u32 = b.into();
     for _ in 0..3 {
         len <<= 8;
-        let ok_or = iter.next().ok_or(io::Error::new(io::ErrorKind::UnexpectedEof, Err::EOF))?.1;
+        let ok_or = iter.next().ok_or(MyErr::EOF)?.1;
         len |= ok_or as u32;
     }
     let mut chunk = [0; 4];
     for i in 0..4 {
-        let ok_or = iter.next().ok_or(io::Error::new(io::ErrorKind::UnexpectedEof, Err::EOF))?.1;
+        let ok_or = iter.next().ok_or(MyErr::EOF)?.1;
         chunk[i] = ok_or;
     }
     let chunk = ChunkId(chunk);
     if len > (i32::MAX as u32) {
         // writeln!(stdinfo, "too large chunk: {}, at byte: {}, len: {}", chunk, ix, len)?;
-        return Err(io::Error::new(io::ErrorKind::Other, Err::LargeLen))
+        return Err(MyErr::LargeLen)
     }
     if !chunk.is_valid() {
         // writeln!(stdinfo, "invalid chunk: {}, at byte: {}, len: {}", chunk, ix, len)?;
-        return Err(io::Error::new(io::ErrorKind::InvalidData, Err::InvalidData))
+        return Err(MyErr::InvalidData)
     }
     // writeln!(stdinfo, "found chunk {}, at byte: {}, len: {}", chunk, ix, len)?;
     Ok((len, chunk))
@@ -180,16 +189,27 @@ pub struct Chunk {
     data: Vec<u8>,
     crc: u32,
 }
+impl Chunk {
+    /// does the crc match the data?
+    pub fn is_valid(&self) -> bool {
+        self.id.is_valid() //&&
+        // crate::crc::crc(self.id, &self.data) == self.crc
+    }
+    pub fn full_len(&self) -> usize {
+        4 + 4 + self.data.len() + 4
+    }
+}
 
-fn parse_png_chunk(iter: &mut impl Iterator<Item = (usize, u8)>, mut stdinfo: impl Write) -> std::io::Result<Chunk> {
+fn parse_png_chunk(iter: &mut impl Iterator<Item = (usize, u8)>, mut stdinfo: impl Write) -> std::result::Result<Chunk, MyErr> {
     let (len, chunk) = parse_png_chunk_head(iter, &mut stdinfo)?;
     let bytes: Vec<u8> = iter.by_ref().map(|x| x.1).take(len as usize).collect();
     let mut crc: u32 = 0;
     for _ in 0..4 {
         crc <<= 8;
-        let ok_or = iter.next().ok_or(io::Error::new(io::ErrorKind::UnexpectedEof, Err::EOF))?.1;
+        let ok_or = iter.next().ok_or(MyErr::EOF)?.1;
         crc |= ok_or as u32;
     }
-    Ok(Chunk { id: chunk, data: bytes, crc })
+    let chunk = Chunk { id: chunk, data: bytes, crc };
+    Ok(chunk)
 }
 
