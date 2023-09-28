@@ -46,11 +46,11 @@ fn parse_pngs(bytes: io::Bytes<clio::Input>, mut stdinfo: clio::Output) -> io::R
     for start in 0..iter.len() {
         // writeln!(stdinfo, "testing offset: {} of {}", start, iter.len())?;
         let iter = slice.into_iter().cloned().skip(start);
-        let mut iter2 = slice.into_iter().cloned().enumerate().skip(start);
+        let iter2 = slice.into_iter().cloned().skip(start);
         if let Ok(_) = parse_png_magic(iter) {
             magics.push(start);
             // writeln!(stdinfo, "found PNG magic at offset: {}", start)?;
-        } else if let Ok(c) = parse_png_chunk(&mut iter2, &mut stdinfo) {
+        } else if let Ok(c) = parse_png_chunk(iter2) {
             next_chunk.insert(start, start + c.full_len());
         // writeln!(stdinfo, "found chunk {{{}, len: {}}} at offset: {}", c.id, c.data.len(), start)?;
             chunks.insert(start, c);
@@ -86,7 +86,7 @@ fn parse_pngs(bytes: io::Bytes<clio::Input>, mut stdinfo: clio::Output) -> io::R
 fn parse_png_iter(mut iter: core::iter::Skip<core::iter::Enumerate<impl Iterator<Item = u8>>>, mut stdinfo: impl Write) -> io::Result<()> {
     parse_png_magic(iter.by_ref().map(|x| x.1))?;
     let mut found_iend = false;
-    while let Ok(x) = parse_png_chunk(&mut iter, &mut stdinfo) {
+    while let Ok(x) = parse_png_chunk(iter.by_ref().map(|x| x.1)) {
         writeln!(stdinfo, "parsed chunk: {:?}", x.id)?;
         if x.id == ChunkId::IEND {
             found_iend = true;
@@ -94,7 +94,7 @@ fn parse_png_iter(mut iter: core::iter::Skip<core::iter::Enumerate<impl Iterator
         }
     }
     loop {
-        let Ok((len, chunk)) = parse_png_chunk_head(&mut iter, &mut stdinfo) else {
+        let Ok((len, chunk)) = parse_png_chunk_head(iter.by_ref().map(|x| x.1).by_ref()) else {
             continue;
         };
         writeln!(stdinfo, "possible trailing header: {}, len: {}", chunk, len)?;
@@ -198,17 +198,17 @@ impl Display for ChunkId {
     }
 }
 
-fn parse_png_chunk_head(iter: &mut impl Iterator<Item = (usize, u8)>, mut stdinfo: impl Write) -> std::result::Result<(u32, ChunkId), MyErr> {
-    let (ix, b) = iter.next().ok_or(MyErr::EOF)?;
+fn parse_png_chunk_head(iter: &mut impl Iterator<Item = u8>) -> std::result::Result<(u32, ChunkId), MyErr> {
+    let b = iter.next().ok_or(MyErr::EOF)?;
     let mut len: u32 = b.into();
     for _ in 0..3 {
         len <<= 8;
-        let ok_or = iter.next().ok_or(MyErr::EOF)?.1;
+        let ok_or = iter.next().ok_or(MyErr::EOF)?;
         len |= ok_or as u32;
     }
     let mut chunk = [0; 4];
     for i in 0..4 {
-        let ok_or = iter.next().ok_or(MyErr::EOF)?.1;
+        let ok_or = iter.next().ok_or(MyErr::EOF)?;
         chunk[i] = ok_or;
     }
     let chunk = ChunkId(chunk);
@@ -241,13 +241,13 @@ impl Chunk {
     }
 }
 
-fn parse_png_chunk(iter: &mut impl Iterator<Item = (usize, u8)>, mut stdinfo: impl Write) -> std::result::Result<Chunk, MyErr> {
-    let (len, chunk) = parse_png_chunk_head(iter, &mut stdinfo)?;
-    let bytes: Vec<u8> = iter.by_ref().map(|x| x.1).take(len as usize).collect();
+fn parse_png_chunk(mut iter: impl Iterator<Item = u8>) -> std::result::Result<Chunk, MyErr> {
+    let (len, chunk) = parse_png_chunk_head(iter.by_ref().map(|x| x).by_ref())?;
+    let bytes: Vec<u8> = iter.by_ref().take(len as usize).collect();
     let mut crc: u32 = 0;
     for _ in 0..4 {
         crc <<= 8;
-        let ok_or = iter.next().ok_or(MyErr::EOF)?.1;
+        let ok_or = iter.next().ok_or(MyErr::EOF)?;
         crc |= ok_or as u32;
     }
     let chunk = Chunk { id: chunk, data: bytes, crc };
