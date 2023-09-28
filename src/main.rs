@@ -1,4 +1,4 @@
-use std::{io::{Read, Write, Result, self}, fmt::{Display, Debug}};
+use std::{io::{Read, Write, self}, fmt::{Display, Debug}, collections::HashMap};
 
 use clap::Parser;
 use clio::*;
@@ -23,7 +23,7 @@ fn main() -> Result<()> {
     let iter = args.input.bytes();
     // let d = iter.map(|x| (x, x)).unzip();
     parse_pngs(iter, args.output)?;
-    // std::io::copy(&mut args.input, &mut args.output).unwrap();
+    // io::copy(&mut args.input, &mut args.output).unwrap();
     Ok(())
 }
 
@@ -36,13 +36,54 @@ if we found a chunk, output it & start index, continue
 
 
 
-fn parse_pngs(bytes: io::Bytes<clio::Input>, stdinfo: clio::Output) -> std::io::Result<()> {
+fn parse_pngs(bytes: io::Bytes<clio::Input>, mut stdinfo: clio::Output) -> io::Result<()> {
     let iter = bytes.filter_map(|x| x.ok());
     let iter: Vec<u8> = iter.collect();
-    parse_png_iter(iter.into_iter().enumerate(), stdinfo)
+    let slice = iter.as_slice();
+    let mut magics: Vec<usize> = vec![];
+    let mut chunks: HashMap<usize, Chunk> = HashMap::new();
+    let mut next_chunk: HashMap<usize, usize> = HashMap::new();
+    for start in 0..iter.len() {
+        // writeln!(stdinfo, "testing offset: {} of {}", start, iter.len())?;
+        let iter = slice.into_iter().cloned().skip(start);
+        let mut iter2 = slice.into_iter().cloned().enumerate().skip(start);
+        if let Ok(_) = parse_png_magic(iter) {
+            magics.push(start);
+            // writeln!(stdinfo, "found PNG magic at offset: {}", start)?;
+        } else if let Ok(c) = parse_png_chunk(&mut iter2, &mut stdinfo) {
+            next_chunk.insert(start, start + c.full_len());
+        // writeln!(stdinfo, "found chunk {{{}, len: {}}} at offset: {}", c.id, c.data.len(), start)?;
+            chunks.insert(start, c);
+        } else {
+            continue;
+        }
+    }
+    for mag in magics {
+        let mut chunk = mag + PNG_MAGIC.len();
+        writeln!(stdinfo, "found PNG magic at offset: {}, start chunk at: {}", mag, chunk)?;
+        'chain: while let Some(c) = next_chunk.get(&chunk) {
+            if let Some(ch) = chunks.remove(&chunk) {
+                writeln!(stdinfo, "found chunk {{{}, len: {}}} at offset: {}", ch.id, ch.data.len(), chunk)?;                    
+                chunk = *c;
+                if ch.id == ChunkId::IEND {
+                    writeln!(stdinfo, "^ ending chunk chain ^\n")?;
+                    break 'chain;
+                }
+            } else if *c == slice.len() {
+                writeln!(stdinfo, "^ ending chunk chain at EOF ^\n")?;
+            } else {
+                writeln!(stdinfo, "^ ending chunk chain ^\n")?;
+            }
+        }
+    }
+    for (off, c) in chunks {
+        writeln!(stdinfo, "found bare chunk chain {{{}, len: {}}} at offset: {}", c.id, c.data.len(), off)?;
+    }
+    // writeln!(stdinfo, "<< end parse pngs")?;
+    Ok(())
 }
 
-fn parse_png_iter(mut iter: core::iter::Enumerate<impl Iterator<Item = u8>>, mut stdinfo: impl Write) -> std::io::Result<()> {
+fn parse_png_iter(mut iter: core::iter::Skip<core::iter::Enumerate<impl Iterator<Item = u8>>>, mut stdinfo: impl Write) -> io::Result<()> {
     parse_png_magic(iter.by_ref().map(|x| x.1))?;
     let mut found_iend = false;
     while let Ok(x) = parse_png_chunk(&mut iter, &mut stdinfo) {
@@ -70,7 +111,7 @@ fn parse_png_iter(mut iter: core::iter::Enumerate<impl Iterator<Item = u8>>, mut
 }
 const PNG_MAGIC: &[u8] = &[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
 
-fn parse_png_magic(iter: impl Iterator<Item = u8>) -> std::io::Result<()> {
+fn parse_png_magic(iter: impl Iterator<Item = u8>) -> io::Result<()> {
     let mut px: usize = 0;
     for b in iter {
         // write!(stdinfo, "[{:?} | {:?}]", *b.as_ref().unwrap() as char, (b.as_ref().unwrap() & 0b0111_1111) as char)?;
@@ -100,7 +141,7 @@ impl Display for MyErr {
         }
     }
 }
-impl From<MyErr> for std::io::Error {
+impl From<MyErr> for io::Error {
     fn from(value: MyErr) -> Self {
         match value {
             MyErr::EOF => Self::new(io::ErrorKind::UnexpectedEof, value),
