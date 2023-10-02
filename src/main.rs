@@ -71,13 +71,36 @@ fn parse_pngs(bytes: io::Bytes<clio::Input>, mut stdinfo: clio::Output) -> io::R
                 }
             } else if *c == slice.len() {
                 writeln!(stdinfo, "^ ending chunk chain at EOF ^\n")?;
+                break 'chain;
             } else {
                 writeln!(stdinfo, "^ ending chunk chain ^\n")?;
+                break 'chain;
             }
         }
     }
-    for (off, c) in chunks {
-        writeln!(stdinfo, "found bare chunk chain {{{}, len: {}}} at offset: {}", c.id, c.data.len(), off)?;
+    let mut keys: Vec<usize> = chunks.keys().copied().collect();
+    keys.sort_unstable();
+    for k in keys {
+        if chunks.contains_key(&k) {
+            writeln!(stdinfo, "found bare chunk chain at offset: {}", k)?;
+            let mut chunk = k;
+            'chain: while let Some(c) = next_chunk.get(&chunk) {
+                if let Some(ch) = chunks.remove(&chunk) {
+                    writeln!(stdinfo, "found chunk {{{}, len: {}}} at offset: {}", ch.id, ch.data.len(), chunk)?;                    
+                    chunk = *c;
+                    if ch.id == ChunkId::IEND {
+                        writeln!(stdinfo, "^ ending chunk chain ^\n")?;
+                        break 'chain;
+                    }
+                } else if *c == slice.len() {
+                    writeln!(stdinfo, "^ ending chunk chain at EOF ^\n")?;
+                    break 'chain;
+                } else {
+                    writeln!(stdinfo, "^ ending chunk chain ^\n")?;
+                    break 'chain;
+                }
+            }
+        }
     }
     // writeln!(stdinfo, "<< end parse pngs")?;
     Ok(())
