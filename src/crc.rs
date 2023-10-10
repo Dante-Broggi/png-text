@@ -7,7 +7,7 @@ fn make_crc_table() -> [u32; 256] {
     let mut table = [0; 256];
     for n in 0..256 {
         let mut c = n as u32;
-        for k in 0..8 {
+        for _ in 0..8 {
             if (c & 1) == 1 {
                 c = 0xedb88320 ^ ((c >> 1) & 0x7FFFFFFF);
             } else {
@@ -37,9 +37,9 @@ pub fn crc(head: crate::ChunkId, buf: &[u8]) -> u32 {
     update_crc(c, buf) ^ 0xffffffff
 }
 
-pub fn crc_raw(buf: &[u8]) -> u32 {
-    update_crc(0xffffffff, buf) ^ 0xffffffff
-}
+// pub fn crc_raw(buf: &[u8]) -> u32 {
+//     update_crc(0xffffffff, buf) ^ 0xffffffff
+// }
 
 
 #[cfg(test)]
