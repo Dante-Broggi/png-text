@@ -63,7 +63,7 @@ fn parse_pngs(bytes: io::Bytes<clio::Input>, mut stdinfo: clio::Output) -> io::R
         writeln!(stdinfo, "found PNG magic at offset: {}, start chunk at: {}", mag, chunk)?;
         'chain: while let Some(c) = next_chunk.get(&chunk) {
             if let Some(ch) = chunks.remove(&chunk) {
-                writeln!(stdinfo, "found chunk {{{}, len: {}}} at offset: {}", ch.id, ch.data.len(), chunk)?;                    
+                writeln!(stdinfo, "{} at offset: {}", ch, chunk)?;                    
                 chunk = *c;
                 if ch.id == ChunkId::IEND {
                     writeln!(stdinfo, "^ ending chunk chain ^\n")?;
@@ -86,7 +86,7 @@ fn parse_pngs(bytes: io::Bytes<clio::Input>, mut stdinfo: clio::Output) -> io::R
             let mut chunk = k;
             'chain: while let Some(c) = next_chunk.get(&chunk) {
                 if let Some(ch) = chunks.remove(&chunk) {
-                    writeln!(stdinfo, "found chunk {{{}, len: {}}} at offset: {}", ch.id, ch.data.len(), chunk)?;                    
+                    writeln!(stdinfo, "{} at offset: {}", ch, chunk)?;                    
                     chunk = *c;
                     if ch.id == ChunkId::IEND {
                         writeln!(stdinfo, "^ ending chunk chain ^\n")?;
@@ -261,6 +261,23 @@ impl Chunk {
     }
     pub fn full_len(&self) -> usize {
         4 + 4 + self.data.len() + 4
+    }
+}
+impl Display for Chunk {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.is_valid() {
+            match self.id {
+                ChunkId::IEND if self.data.len() == 0 => {
+                    f.write_fmt(format_args!("{{{}}}", self.id))?;
+                },
+                _ => {
+                    f.write_fmt(format_args!("{{id: {}, len:{}}}", self.id, self.data.len()))?;
+                }
+            }
+        } else {
+            f.write_fmt(format_args!("{{id: {}, len:{}, wrong_crc: {:?}}}", self.id, self.data.len(), &self.crc.to_be_bytes()))?;
+        }
+        Ok(())
     }
 }
 
