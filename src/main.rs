@@ -43,17 +43,23 @@ fn parse_pngs(bytes: io::Bytes<clio::Input>, mut stdinfo: clio::Output) -> io::R
     let mut magics: Vec<usize> = vec![];
     let mut chunks: HashMap<usize, Chunk> = HashMap::new();
     let mut next_chunk: HashMap<usize, usize> = HashMap::new();
+    let mut unused_bytes: Vec<usize> = vec![];
+    let mut next_byte: usize = 0;
     for start in 0..iter.len() {
         // writeln!(stdinfo, "testing offset: {} of {}", start, iter.len())?;
         let iter = slice.into_iter().cloned().skip(start);
         let iter2 = slice.into_iter().cloned().skip(start);
         if let Ok(_) = parse_png_magic(iter) {
             magics.push(start);
+            next_byte = next_byte.max(start + PNG_MAGIC.len());
             // writeln!(stdinfo, "found PNG magic at offset: {}", start)?;
         } else if let Ok(c) = parse_png_chunk(iter2) {
             next_chunk.insert(start, start + c.full_len());
+            next_byte = next_byte.max(start + c.full_len());
         // writeln!(stdinfo, "found chunk {{{}, len: {}}} at offset: {}", c.id, c.data.len(), start)?;
             chunks.insert(start, c);
+        } else if start >= next_byte {
+            unused_bytes.push(start);
         } else {
             continue;
         }
@@ -101,6 +107,9 @@ fn parse_pngs(bytes: io::Bytes<clio::Input>, mut stdinfo: clio::Output) -> io::R
                 }
             }
         }
+    }
+    for b in unused_bytes {
+        writeln!(stdinfo, "unused byte {:#04x} => {:?}, at offset: {}", slice[b], slice[b] as char, b)?;
     }
     // writeln!(stdinfo, "<< end parse pngs")?;
     Ok(())
@@ -213,10 +222,9 @@ impl Debug for ChunkId {
 }
 impl Display for ChunkId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // for c in self.0.map(|x| x as char) {
-        //     f.write_fmt(format_args!("{:?}", c))?;
-        // }
-        f.write_fmt(format_args!("{:?}", self.0.map(|x| x as char)))?;
+        let iter = self.0.map(|x| x as char);
+        let s = String::from_iter(iter);
+        f.write_fmt(format_args!("{:?}", s))?;
         Ok(())
     }
 }
