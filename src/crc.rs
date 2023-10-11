@@ -54,6 +54,6 @@ mod tests {
             crc: u32::from_be_bytes([0xae, 0x42, 0x60, 0x82]),
         };
         assert_eq!(crc(iend.id, &iend.data), iend.crc);
-        assert!(iend.is_valid());
+        assert!(iend.is_valid_spec());
     }
 }
