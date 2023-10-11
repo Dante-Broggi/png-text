@@ -115,32 +115,6 @@ fn parse_pngs(bytes: io::Bytes<clio::Input>, mut stdinfo: clio::Output) -> io::R
     Ok(())
 }
 
-fn parse_png_iter(mut iter: core::iter::Skip<core::iter::Enumerate<impl Iterator<Item = u8>>>, mut stdinfo: impl Write) -> io::Result<()> {
-    parse_png_magic(iter.by_ref().map(|x| x.1))?;
-    let mut found_iend = false;
-    while let Ok(x) = parse_png_chunk(iter.by_ref().map(|x| x.1)) {
-        writeln!(stdinfo, "parsed chunk: {:?}", x.id)?;
-        if x.id == ChunkId::IEND {
-            found_iend = true;
-            break;
-        }
-    }
-    loop {
-        let Ok((len, chunk)) = parse_png_chunk_head(iter.by_ref().map(|x| x.1).by_ref()) else {
-            continue;
-        };
-        writeln!(stdinfo, "possible trailing header: {}, len: {}", chunk, len)?;
-    }
-    if let Some((_, b)) = iter.next() {
-        writeln!(stdinfo, "remaining bytes:")?;
-        write!(stdinfo, "{}", b)?;
-    }
-    for (_, _b) in iter {
-        // write!(stdinfo, "{}", b?)?;
-    }
-
-    Ok(())
-}
 const PNG_MAGIC: &[u8] = &[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
 
 fn parse_png_magic(iter: impl Iterator<Item = u8>) -> io::Result<()> {
