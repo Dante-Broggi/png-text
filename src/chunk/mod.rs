@@ -19,6 +19,7 @@ impl ChunkId {
     pub const cHRM: Self = ChunkId(*b"cHRM");
     pub const gAMA: Self = ChunkId(*b"gAMA");
     pub const iCCP: Self = ChunkId(*b"iCCP");
+    pub const sBIT: Self = ChunkId(*b"sBIT");
     pub const IEND: Self = ChunkId(*b"IEND");
 
     /// Each byte of a chunk type is restricted to
@@ -109,6 +110,9 @@ impl Chunk {
                 };
                 iccp.is_valid()
             },
+            ChunkId::sBIT => {
+                true
+            },
             ChunkId::IEND => {
                 self.data.len() == 0
             },
@@ -148,6 +152,9 @@ impl Display for Chunk {
                 },
                 ChunkId::iCCP => {
                     Display::fmt(&iCCP::new(self).unwrap(), f)?;
+                },
+                ChunkId::sBIT => {
+                    f.write_fmt(format_args!("{{id: {}, len:{}}}", self.id, self.data.len()))?;
                 },
                 _ => {
                     f.write_fmt(format_args!("{{id: {}, len:{}}}", self.id, self.data.len()))?;
