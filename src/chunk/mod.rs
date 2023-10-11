@@ -1,16 +1,20 @@
 use core::fmt::{Display, Debug};
 
-use self::ihdr::IHDR;
+use self::{ihdr::IHDR, chrm::cHRM};
 
 mod ihdr;
+mod chrm;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct ChunkId(pub [u8; 4]);
+#[allow(non_upper_case_globals)]
 impl ChunkId {
     const DATA_BIT: u8 = 32;
     pub const IHDR: Self = ChunkId(*b"IHDR");
     pub const PLTE: Self = ChunkId(*b"PLTE");
     pub const IDAT: Self = ChunkId(*b"IDAT");
+    pub const tRNS: Self = ChunkId(*b"tRNS");
+    pub const cHRM: Self = ChunkId(*b"cHRM");
     pub const IEND: Self = ChunkId(*b"IEND");
 
     /// Each byte of a chunk type is restricted to
@@ -80,6 +84,15 @@ impl Chunk {
             ChunkId::IDAT => {
                 true
             },
+            ChunkId::tRNS => {
+                true
+            },
+            ChunkId::cHRM => {
+                let Some(chrm) = cHRM::new(self) else {
+                    return false;
+                };
+                chrm.is_valid()
+            },
             ChunkId::IEND => {
                 self.data.len() == 0
             },
@@ -105,9 +118,15 @@ impl Display for Chunk {
                 ChunkId::IEND => {
                     f.write_fmt(format_args!("{{id: {}}}", self.id))?;
                 },
+                ChunkId::tRNS => {
+                    f.write_fmt(format_args!("{{id: {}, len:{}}}", self.id, self.data.len()))?;
+                },
+                ChunkId::cHRM => {
+                    Display::fmt(&cHRM::new(self).unwrap(), f)?;
+                },
                 ChunkId::IDAT => {
                     f.write_fmt(format_args!("{{id: {}, len:{}}}", self.id, self.data.len()))?;
-                }
+                },
                 _ => {
                     f.write_fmt(format_args!("{{id: {}, len:{}}}", self.id, self.data.len()))?;
                 }
