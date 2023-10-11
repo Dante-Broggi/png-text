@@ -1,5 +1,9 @@
 use core::fmt::{Display, Debug};
 
+use self::ihdr::IHDR;
+
+mod ihdr;
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct ChunkId(pub [u8; 4]);
 impl ChunkId {
@@ -46,7 +50,7 @@ impl Display for ChunkId {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Chunk {
     pub(crate) id: ChunkId,
     pub(crate) data: Vec<u8>,
@@ -63,30 +67,10 @@ impl Chunk {
         if !self.is_valid_chunk() { return false; }
         match self.id {
             ChunkId::IHDR => {
-                if self.data.len() == 13 &&
-                self.data[..8].into_iter().any(|&x| x != 0) &&
-                matches!(self.data[8], 1 | 2 | 4 | 8 | 16) &&
-                matches!(self.data[9], 0 | 2 | 3 | 4 | 6) &&
-                matches!(self.data[10], 0) &&
-                matches!(self.data[11], 0) &&
-                matches!(self.data[12], 0 | 1) {
-                    // https://www.w3.org/TR/png-3/#table111
-                    match self.data[9] {
-                        0 => {
-                            matches!(self.data[8], 1 | 2 | 4 | 8 | 16)
-                        },
-                        3 => {
-                            matches!(self.data[8], 1 | 2 | 4 | 8)
-                        },
-                        2 | 4 | 6 => {
-                            matches!(self.data[8], 8 | 16)
-                        },
-                        _ => false,
-                    }
-                } else {
-                    false
-                }
-
+                let Some(ihdr) = IHDR::new(self) else {
+                    return false;
+                };
+                ihdr.is_valid()
             },
             ChunkId::PLTE => {
                 self.data.len() % 3 == 0 &&
@@ -109,8 +93,7 @@ impl Display for Chunk {
         if self.is_valid_spec() {
             match self.id {
                 ChunkId::IHDR => {
-                    f.write_fmt(format_args!("{{id:{}, width: {}, height: {}, bit_depth: {}, colour_type: {}, interlace: {}, ..}}",
-                                             self.id, u32::from_be_bytes(self.data[..4].try_into().unwrap()), u32::from_be_bytes(self.data[4..8].try_into().unwrap()), self.data[8], self.data[9], self.data[12]))?;
+                    Display::fmt(&IHDR::new(self).unwrap(), f)?;
                 },
                 ChunkId::IEND => {
                     f.write_fmt(format_args!("{{{}}}", self.id))?;
