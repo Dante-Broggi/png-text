@@ -1,9 +1,10 @@
 use core::fmt::{Display, Debug};
 
-use self::{ihdr::IHDR, chrm::cHRM};
+use self::{ihdr::IHDR, chrm::cHRM, gama::gAMA};
 
 mod ihdr;
 mod chrm;
+mod gama;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct ChunkId(pub [u8; 4]);
@@ -15,6 +16,7 @@ impl ChunkId {
     pub const IDAT: Self = ChunkId(*b"IDAT");
     pub const tRNS: Self = ChunkId(*b"tRNS");
     pub const cHRM: Self = ChunkId(*b"cHRM");
+    pub const gAMA: Self = ChunkId(*b"gAMA");
     pub const IEND: Self = ChunkId(*b"IEND");
 
     /// Each byte of a chunk type is restricted to
@@ -93,6 +95,12 @@ impl Chunk {
                 };
                 chrm.is_valid()
             },
+            ChunkId::gAMA => {
+                let Some(gama) = gAMA::new(self) else {
+                    return false;
+                };
+                gama.is_valid()
+            },
             ChunkId::IEND => {
                 self.data.len() == 0
             },
@@ -123,6 +131,9 @@ impl Display for Chunk {
                 },
                 ChunkId::cHRM => {
                     Display::fmt(&cHRM::new(self).unwrap(), f)?;
+                },
+                ChunkId::gAMA => {
+                    Display::fmt(&gAMA::new(self).unwrap(), f)?;
                 },
                 ChunkId::IDAT => {
                     f.write_fmt(format_args!("{{id: {}, len:{}}}", self.id, self.data.len()))?;
