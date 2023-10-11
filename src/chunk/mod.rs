@@ -10,6 +10,7 @@ impl ChunkId {
     const DATA_BIT: u8 = 32;
     pub const IHDR: Self = ChunkId(*b"IHDR");
     pub const PLTE: Self = ChunkId(*b"PLTE");
+    pub const IDAT: Self = ChunkId(*b"IDAT");
     pub const IEND: Self = ChunkId(*b"IEND");
 
     /// Each byte of a chunk type is restricted to
@@ -75,7 +76,10 @@ impl Chunk {
             ChunkId::PLTE => {
                 self.data.len() % 3 == 0 &&
                 self.data.len() > 0
-            }
+            },
+            ChunkId::IDAT => {
+                true
+            },
             ChunkId::IEND => {
                 self.data.len() == 0
             },
@@ -95,9 +99,15 @@ impl Display for Chunk {
                 ChunkId::IHDR => {
                     Display::fmt(&IHDR::new(self).unwrap(), f)?;
                 },
-                ChunkId::IEND => {
-                    f.write_fmt(format_args!("{{{}}}", self.id))?;
+                ChunkId::PLTE => {
+                    f.write_fmt(format_args!("{{id: {}, palette_len: {}}}", self.id, self.data.len()/3))?;
                 },
+                ChunkId::IEND => {
+                    f.write_fmt(format_args!("{{id: {}}}", self.id))?;
+                },
+                ChunkId::IDAT => {
+                    f.write_fmt(format_args!("{{id: {}, len:{}}}", self.id, self.data.len()))?;
+                }
                 _ => {
                     f.write_fmt(format_args!("{{id: {}, len:{}}}", self.id, self.data.len()))?;
                 }
