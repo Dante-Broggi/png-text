@@ -1,12 +1,13 @@
 use core::fmt::{Display, Debug};
 
-use self::{ihdr::IHDR, chrm::cHRM, gama::gAMA, iccp::iCCP, time::tIME};
+use self::{ihdr::IHDR, chrm::cHRM, gama::gAMA, iccp::iCCP, time::tIME, phys::pHYs};
 
 mod ihdr;
 mod chrm;
 mod gama;
 mod iccp;
 mod time;
+mod phys;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct ChunkId(pub [u8; 4]);
@@ -22,6 +23,7 @@ impl ChunkId {
     pub const iCCP: Self = ChunkId(*b"iCCP");
     pub const sBIT: Self = ChunkId(*b"sBIT");
     pub const tIME: Self = ChunkId(*b"tIME");
+    pub const pHYs: Self = ChunkId(*b"pHYs");
     pub const IEND: Self = ChunkId(*b"IEND");
 
     /// Each byte of a chunk type is restricted to
@@ -121,6 +123,12 @@ impl Chunk {
                 };
                 time.is_valid()
             },
+            ChunkId::pHYs => {
+                let Some(phys) = pHYs::new(self) else {
+                    return false;
+                };
+                phys.is_valid()
+            },
             ChunkId::IEND => {
                 self.data.len() == 0
             },
@@ -166,6 +174,9 @@ impl Display for Chunk {
                 },
                 ChunkId::tIME => {
                     Display::fmt(&tIME::new(self).unwrap(), f)?;
+                },
+                ChunkId::pHYs => {
+                    Display::fmt(&pHYs::new(self).unwrap(), f)?;
                 },
                 _ => {
                     f.write_fmt(format_args!("{{id: {}, len:{}}}", self.id, self.data.len()))?;
