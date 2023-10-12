@@ -1,7 +1,5 @@
 use core::fmt::{Display, Debug};
 
-use crate::chunk;
-
 use super::ChunkId;
 
 #[allow(non_camel_case_types)]
