@@ -7,7 +7,19 @@ mod crc;
 pub mod chunk;
 use chunk::{Chunk, ChunkId};
 
-/// Simple program to greet a person
+/// png-text reads a binary (PNG) file, and describes all PNG data in the file, 
+/// regardless of whether or not the data chunks form a complete valid PNG.
+/// 
+/// The ouput format is a list of valid PNG chunk chains contained in the file,
+/// starting with those which begin with a valid PNG header, in order,
+/// followed by those chunk chains which do not begin with a valid PNG header,
+/// and then a list of bytes&byte offsets which do not form valid chunk chains.
+/// 
+/// After extracting loose IDAT chunks one could look for hidden pixels
+/// either out of the declared width/height or in transparent pixels,
+/// but this program does not do such image analysis.
+/// Look at the more developed <https://fotoforensics.com> / <https://lab.fotoforensics.com/?show=lab> service for such analysis 
+/// Or at <https://en.wikipedia.org/wiki/ACropalypse> and <https://acropalypse.app> for the vulnerability which inspired this project. 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
