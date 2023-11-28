@@ -60,6 +60,9 @@ fn parse_pngs(bytes: io::Bytes<clio::Input>, mut stdinfo: clio::Output) -> io::R
     let mut unused_bytes: Vec<usize> = vec![];
     let mut next_byte: usize = 0;
     for start in 0..iter.len() {
+        if start.is_power_of_two() {
+            eprintln!("info: at index: {} = 2^{}, out of {} >= 2^{}", start, start.ilog2(), iter.len(), iter.len().ilog2());
+        }
         // writeln!(stdinfo, "testing offset: {} of {}", start, iter.len())?;
         let iter = slice.into_iter().cloned().skip(start);
         let iter2 = slice.into_iter().cloned().skip(start);
