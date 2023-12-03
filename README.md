@@ -21,7 +21,8 @@ Look at the more developed <https://fotoforensics.com> / <https://lab.fotoforens
 Or at <https://en.wikipedia.org/wiki/ACropalypse> and <https://acropalypse.app> for the vulnerability which inspired this project. 
 
 
-## CIS 542 Computer Forensics class project pitch
+## UMass Dartmouth CIS 542 Computer Forensics (Fall 2023):
+### Class Project Pitch
 My idea for a project idea is to create a simple command line PNG metadata reader, similar to the Strings view on <https://fotoforensics.com>, which also searches for additional PNG data after the first IEND of the file.
 The latter is to examine the forensic data in overwritten but not truncated files, eg: <https://en.wikipedia.org/wiki/ACropalypse>.
 This will not provide an actual renderer or GUI.
