@@ -35,16 +35,25 @@ Options:
   ```
 
 ## UMass Dartmouth CIS 542 Computer Forensics (Fall 2023):
+This repository was created as a requirement of CIS 542 Computer Forensics (Fall 2023) at UMass Dartmouth.
 ### Class Project Pitch
 My idea for a project idea is to create a simple command line PNG metadata reader, similar to the Strings view on <https://fotoforensics.com>, which also searches for additional PNG data after the first IEND of the file.
 The latter is to examine the forensic data in overwritten but not truncated files, eg: <https://en.wikipedia.org/wiki/ACropalypse>.
 This will not provide an actual renderer or GUI.
 Search functionality will be provided by grep, or left out.
 Any example images will be provided on an as-found/created basis (if I have them or need them to test the program) probably from wikipedia & co.
-
-### Class Deliverables:
+Pitched Deliverables:
 A command line program which produces a textual description of a PNG file, specifically of the metadata and any trailing data.
 An as-needed collection of test PNG files.
 User manual which describes the use and output format of the program.
 A 7 min presentation (in class?).
 Probably NOT a "results" document.
+
+### Class Deliverables:
+The project was specified as delivering: 
+- A command line program which produces a textual description of a PNG file, specifically of the metadata and any trailing data.
+- An as-needed for the demo collection of test PNG files.
+- A user manual which describes the use and output format of the program, as the README.md file in the repository.
+- A 7 min presentation in class or recorded, which occurred in class on Wednesday December 6, 2023.
+- And this project report document here, approximately 2 pages in length, single-spaced, 12 punto Times New Roman letters, max 1-inch margin on all sides. 
+- All of which is to appear in a public GitHub repository by December 11, 2023 @ 11:59 PM, which shall be <https://github.com/Dante-Broggi/png-text>.
