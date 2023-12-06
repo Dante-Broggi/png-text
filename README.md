@@ -21,6 +21,19 @@ Look at the more developed <https://fotoforensics.com> / <https://lab.fotoforens
 Or at <https://en.wikipedia.org/wiki/ACropalypse> and <https://acropalypse.app> for the vulnerability which inspired this project. 
 
 
+## Usage:
+```out
+Usage: png-text [OPTIONS] [INPUT]
+
+Arguments:
+  [INPUT]  Input file, use '-' for stdin [default: -]
+
+Options:
+  -o, --output <OUTPUT>  Output file '-' for stdout [default: -]
+  -h, --help             Print help
+  -V, --version          Print version
+  ```
+
 ## UMass Dartmouth CIS 542 Computer Forensics (Fall 2023):
 ### Class Project Pitch
 My idea for a project idea is to create a simple command line PNG metadata reader, similar to the Strings view on <https://fotoforensics.com>, which also searches for additional PNG data after the first IEND of the file.
